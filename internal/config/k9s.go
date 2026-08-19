@@ -51,6 +51,7 @@ type K9s struct {
 	Logger              Logger     `json:"logger" yaml:"logger"`
 	Thresholds          Threshold  `json:"thresholds" yaml:"thresholds"`
 	DefaultView         string     `json:"defaultView" yaml:"defaultView"`
+	ContextFavorites    []string   `json:"contextFavorites" yaml:"contextFavorites,omitempty"`
 	manualRefreshRate   float32
 	manualReadOnly      *bool
 	manualCommand       *string
@@ -89,6 +90,37 @@ func (k *K9s) ToggleContextSwitch(b bool) {
 	defer k.mx.Unlock()
 
 	k.contextSwitch = b
+}
+
+// MaxContextFavorites is the number of most-recently-used contexts to
+// remember for the S-1..S-9 context hotkeys, mirroring MaxFavoritesNS.
+const MaxContextFavorites = 9
+
+// AddContextFavorite records name as the most-recently-used context,
+// mirroring Namespace.addFavNS: MRU-ordered, deduped, capped.
+func (k *K9s) AddContextFavorite(name string) {
+	k.mx.Lock()
+	defer k.mx.Unlock()
+
+	for i, n := range k.ContextFavorites {
+		if n == name {
+			k.ContextFavorites = append(k.ContextFavorites[:i], k.ContextFavorites[i+1:]...)
+			break
+		}
+	}
+
+	k.ContextFavorites = append([]string{name}, k.ContextFavorites...)
+	if len(k.ContextFavorites) > MaxContextFavorites {
+		k.ContextFavorites = k.ContextFavorites[:MaxContextFavorites]
+	}
+}
+
+// ContextFavoritesList returns the most-recently-used contexts.
+func (k *K9s) ContextFavoritesList() []string {
+	k.mx.RLock()
+	defer k.mx.RUnlock()
+
+	return k.ContextFavorites
 }
 
 func (k *K9s) getContextSwitch() bool {

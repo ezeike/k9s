@@ -188,6 +188,12 @@ func (c *Config) FavNamespaces() []string {
 	return ct.Namespace.Favorites
 }
 
+// FavContexts returns the most-recently-used contexts, i.e. the ones
+// actually switched to via :ctx, global across all contexts.
+func (c *Config) FavContexts() []string {
+	return c.K9s.ContextFavoritesList()
+}
+
 // SetActiveNamespace set the active namespace in the current context.
 func (c *Config) SetActiveNamespace(ns string) error {
 	if ns == client.NotNamespaced {

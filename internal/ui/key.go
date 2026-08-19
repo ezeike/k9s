@@ -129,6 +129,19 @@ var NumKeys = map[int]tcell.Key{
 	9: Key9,
 }
 
+// ShiftNumKeys tracks Shift-number keys, used for context favorites.
+var ShiftNumKeys = map[int]tcell.Key{
+	1: KeyShift1,
+	2: KeyShift2,
+	3: KeyShift3,
+	4: KeyShift4,
+	5: KeyShift5,
+	6: KeyShift6,
+	7: KeyShift7,
+	8: KeyShift8,
+	9: KeyShift9,
+}
+
 func initNumbKeys() {
 	tcell.KeyNames[Key0] = "0"
 	tcell.KeyNames[Key1] = "1"
@@ -172,16 +185,16 @@ func initStdKeys() {
 }
 
 func initShiftNumKeys() {
-	tcell.KeyNames[KeyShift0] = "Shift-0"
-	tcell.KeyNames[KeyShift1] = "Shift-1"
-	tcell.KeyNames[KeyShift2] = "Shift-2"
-	tcell.KeyNames[KeyShift3] = "Shift-3"
-	tcell.KeyNames[KeyShift4] = "Shift-4"
-	tcell.KeyNames[KeyShift5] = "Shift-5"
-	tcell.KeyNames[KeyShift6] = "Shift-6"
-	tcell.KeyNames[KeyShift7] = "Shift-7"
-	tcell.KeyNames[KeyShift8] = "Shift-8"
-	tcell.KeyNames[KeyShift9] = "Shift-9"
+	tcell.KeyNames[KeyShift0] = "S-0"
+	tcell.KeyNames[KeyShift1] = "S-1"
+	tcell.KeyNames[KeyShift2] = "S-2"
+	tcell.KeyNames[KeyShift3] = "S-3"
+	tcell.KeyNames[KeyShift4] = "S-4"
+	tcell.KeyNames[KeyShift5] = "S-5"
+	tcell.KeyNames[KeyShift6] = "S-6"
+	tcell.KeyNames[KeyShift7] = "S-7"
+	tcell.KeyNames[KeyShift8] = "S-8"
+	tcell.KeyNames[KeyShift9] = "S-9"
 }
 
 func initShiftKeys() {

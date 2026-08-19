@@ -168,6 +168,7 @@ func useContext(app *App, name string) error {
 		slog.Error("Context switch failed during use command", slogs.Error, err)
 		return err
 	}
+	app.Config.K9s.AddContextFavorite(name)
 
 	return app.switchContext(cmd.NewInterpreter("ctx "+name), true)
 }

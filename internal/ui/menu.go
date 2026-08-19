@@ -5,7 +5,6 @@ package ui
 
 import (
 	"fmt"
-	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -18,11 +17,9 @@ import (
 )
 
 const (
-	menuIndexFmt = " [key:-:b]<%d> [fg:-:fgstyle]%s "
+	menuIndexFmt = " [key:-:b]<%s> [fg:-:fgstyle]%s "
 	maxRows      = 6
 )
-
-var menuRX = regexp.MustCompile(`\d`)
 
 // Menu presents menu options.
 type Menu struct {
@@ -81,10 +78,7 @@ func (m *Menu) HydrateMenu(hh model.MenuHints) {
 	sort.Sort(hh)
 
 	table := make([]model.MenuHints, maxRows+1)
-	colCount := (len(hh) / maxRows) + 1
-	if m.hasDigits(hh) {
-		colCount++
-	}
+	colCount := (len(hh) / maxRows) + 1 + m.priorityGroupCount(hh)
 	for row := range maxRows {
 		table[row] = make(model.MenuHints, colCount)
 	}
@@ -102,33 +96,41 @@ func (m *Menu) HydrateMenu(hh model.MenuHints) {
 	}
 }
 
-func (*Menu) hasDigits(hh model.MenuHints) bool {
+// priorityGroupCount returns how many distinct priority groups (context
+// favorites, namespace favorites) have at least one visible hint. Each such
+// group gets forced onto its own dedicated column(s) in buildMenuTable, so
+// the column budget needs a slot reserved per group present.
+func (*Menu) priorityGroupCount(hh model.MenuHints) int {
+	seen := make(map[int]bool, 2)
 	for _, h := range hh {
 		if !h.Visible {
 			continue
 		}
-		if menuRX.MatchString(h.Mnemonic) {
-			return true
+		if g := model.MnemonicGroup(h.Mnemonic); g != model.GroupPlain {
+			seen[g] = true
 		}
 	}
-	return false
+	return len(seen)
 }
 
 func (m *Menu) buildMenuTable(hh model.MenuHints, table []model.MenuHints, colCount int) [][]string {
 	var row, col int
-	firstCmd := true
+	prevGroup := -1
 	maxKeys := make([]int, colCount)
 	for _, h := range hh {
 		if !h.Visible {
 			continue
 		}
 
-		if !menuRX.MatchString(h.Mnemonic) && firstCmd {
-			row, col, firstCmd = 0, col+1, false
+		group := model.MnemonicGroup(h.Mnemonic)
+		if prevGroup != -1 && group != prevGroup {
+			row, col = 0, col+1
 			if table[0][0].IsBlank() {
 				col = 0
 			}
 		}
+		prevGroup = group
+
 		if maxKeys[col] < len(h.Mnemonic) {
 			maxKeys[col] = len(h.Mnemonic)
 		}
@@ -161,12 +163,12 @@ func (m *Menu) formatMenu(h model.MenuHint, size int) string {
 		return ""
 	}
 	styles := m.styles.Frame()
-	i, err := strconv.Atoi(h.Mnemonic)
-	if err == nil {
-		return formatNSMenu(i, h.Description, &styles)
+	switch model.MnemonicGroup(h.Mnemonic) {
+	case model.GroupNamespace, model.GroupContext:
+		return formatNSMenu(h.Mnemonic, h.Description, &styles)
+	default:
+		return formatPlainMenu(h, size, &styles)
 	}
-
-	return formatPlainMenu(h, size, &styles)
 }
 
 // ----------------------------------------------------------------------------
@@ -196,13 +198,13 @@ func ToMnemonic(s string) string {
 	return "<" + keyConv(strings.ToLower(s)) + ">"
 }
 
-func formatNSMenu(i int, name string, styles *config.Frame) string {
+func formatNSMenu(key, name string, styles *config.Frame) string {
 	fmat := strings.Replace(menuIndexFmt, "[key", "["+styles.Menu.NumKeyColor.String(), 1)
 	fmat = strings.ReplaceAll(fmat, ":bg:", ":"+styles.Title.BgColor.String()+":")
 	fmat = strings.Replace(fmat, "[fg", "["+styles.Menu.FgColor.String(), 1)
 	fmat = strings.Replace(fmat, "fgstyle]", styles.Menu.FgStyle.ToShortString()+"]", 1)
 
-	return fmt.Sprintf(fmat, i, name)
+	return fmt.Sprintf(fmat, key, name)
 }
 
 func formatPlainMenu(h model.MenuHint, size int, styles *config.Frame) string {

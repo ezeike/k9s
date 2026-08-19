@@ -37,8 +37,8 @@ var ExitStatus = ""
 const (
 	splashDelay      = 1 * time.Second
 	clusterRefresh   = 15 * time.Second
-	clusterInfoWidth = 50
-	clusterInfoPad   = 15
+	clusterInfoWidth = 20
+	clusterInfoPad   = 10
 )
 
 // App represents an application view.

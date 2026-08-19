@@ -20,6 +20,7 @@ import (
 	"github.com/derailed/k9s/internal/dao"
 	"github.com/derailed/k9s/internal/model"
 	"github.com/derailed/k9s/internal/model1"
+	"github.com/derailed/k9s/internal/render"
 	"github.com/derailed/k9s/internal/slogs"
 	"github.com/derailed/k9s/internal/ui"
 	"github.com/derailed/k9s/internal/ui/dialog"
@@ -36,6 +37,7 @@ type Browser struct {
 	*Table
 
 	namespaces map[int]string
+	contexts   map[int]string
 	meta       *metav1.APIResource
 	accessor   dao.Accessor
 	contextFn  ContextFunc
@@ -659,6 +661,7 @@ func (b *Browser) refreshActions() {
 
 	if b.app.ConOK() {
 		b.namespaceActions(aa)
+		b.contextActions(aa)
 		if !b.app.Config.IsReadOnly() {
 			if client.Can(b.meta.Verbs, "edit") {
 				aa.Add(ui.KeyE, ui.NewKeyActionWithOpts("Edit", b.editCmd,
@@ -732,6 +735,66 @@ func (b *Browser) namespaceActions(aa *ui.KeyActions) {
 			break
 		}
 	}
+}
+
+// maxContextNameLen caps the context name shown in the menu hint.
+const maxContextNameLen = 15
+
+// contextActions binds S-1..S-9 to jump straight to a context, the
+// same way namespaceActions above binds 0..9 to favorite namespaces. Always
+// present, in every view, exactly like the namespace hotkeys. Only contexts
+// actually switched to (via :ctx or one of these hotkeys) show up here,
+// most-recently-used first — nothing appears until you've switched once.
+func (b *Browser) contextActions(aa *ui.KeyActions) {
+	favContexts := b.app.Config.FavContexts()
+	if len(favContexts) == 0 {
+		return
+	}
+
+	b.contexts = make(map[int]string, len(ui.ShiftNumKeys))
+	index := 1
+	for _, name := range favContexts {
+		shiftKey, ok := ui.ShiftNumKeys[index]
+		if !ok {
+			slog.Warn("No shift-number key available for context. Skipping...",
+				slogs.Context, name,
+				slogs.Index, index,
+				slogs.Max, len(favContexts),
+			)
+			break
+		}
+		aa.Add(shiftKey, ui.NewKeyAction(render.Truncate(name, maxContextNameLen), b.switchContextCmd, true))
+		b.contexts[index] = name
+		index++
+	}
+}
+
+func (b *Browser) switchContextCmd(evt *tcell.EventKey) *tcell.EventKey {
+	key := ui.AsKey(evt)
+	var (
+		idx   int
+		found bool
+	)
+	for i, k := range ui.ShiftNumKeys {
+		if k == key {
+			idx, found = i, true
+			break
+		}
+	}
+	if !found {
+		slog.Error("Unable to resolve context hotkey")
+		return nil
+	}
+
+	name, ok := b.contexts[idx]
+	if !ok {
+		return nil
+	}
+	if err := useContext(b.app, name); err != nil {
+		b.App().Flash().Err(err)
+	}
+
+	return nil
 }
 
 func (b *Browser) simpleDelete(selections []string, msg string) {

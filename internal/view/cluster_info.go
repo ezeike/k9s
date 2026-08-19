@@ -81,7 +81,6 @@ func (c *ClusterInfo) sectionCell(t string) *tview.TableCell {
 
 func (c *ClusterInfo) infoCell(t string) *tview.TableCell {
 	cell := tview.NewTableCell(t)
-	cell.SetExpansion(2)
 	cell.SetTextColor(c.styles.K9s.Info.FgColor.Color())
 	cell.SetBackgroundColor(c.app.Styles.BgColor())
 
